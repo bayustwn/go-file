@@ -1,101 +1,135 @@
-import Image from "next/image";
+"use client";
+
+import { ChangeEvent, useState, useEffect } from "react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const router: AppRouterInstance = useRouter();
+  const [email, setEmail] = useState({
+    email: "",
+    disable: false,
+    success: false,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingLink, setIsLoadingLink] = useState(false);
+  const [key, setKey] = useState("");
+  const [loaded, setLoaded] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    const session = localStorage.getItem("session_id");
+
+    if (session) {
+      router.replace("/dashboard");
+    } else {
+      setLoaded(true);
+    }
+  }, []);
+
+  const handleInput = (e: ChangeEvent<HTMLInputElement>) => {
+    setEmail({ ...email, email: e.target.value });
+  };
+
+  const handleKey = (e: ChangeEvent<HTMLInputElement>) => {
+    var valid: number = e.target.value.search(`https://gofile.io/login/`);
+    if (valid != -1) {
+      setKey(e.target.value);
+      setIsLoadingLink(true);
+      getAcc();
+    }
+  };
+
+  async function getAcc() {
+    let keys: string = key.replace("https://gofile.io/login/", "");
+    await axios
+      .get(`${process.env.NEXT_PUBLIC_BASE_URL}/accounts/getid`, {
+        headers: {
+          Authorization: `Bearer ${keys}`,
+        },
+      })
+      .then((res) => {
+        localStorage.setItem("session_id", keys);
+        localStorage.setItem("account_id", res.data.data.id);
+        router.replace("/dashboard");
+        setIsLoadingLink(false);
+      })
+      .catch(() => {
+        setIsLoadingLink(false);
+      });
+  }
+
+  async function login() {
+    if (email.email) {
+      setIsLoading(true);
+      setEmail({ ...email, disable: true });
+      await axios
+        .post(`${process.env.NEXT_PUBLIC_BASE_URL}/accounts`, email)
+        .then(() => {
+          setIsLoading(false);
+          setEmail({ ...email, success: true, disable: true });
+          toast.success("Email Sent!");
+        })
+        .catch(() => {
+          toast.error("Sending Email Failed!");
+          setIsLoading(false);
+          setEmail({ ...email, disable: false });
+        });
+    } else {
+      toast.error("Email Cannot be Empty!");
+    }
+  }
+
+  return (
+    <main className="h-screen flex justify-center items-center">
+      {loaded ? (
+        <div className="max-w-md px-6 py-6 bg-blue-200 outline outline-white/25 items-center flex flex-col rounded-lg shadow-lg">
+          <p className="font-medium">Insert Your Email</p>
+          <div className="relative flex flex-col">
+            <div className="relative">
+              <input
+                onChange={handleInput}
+                disabled={email.disable}
+                className="pr-9 pl-4 my-4 bg-blue-500 py-3 max-w-md  w-sm outline-1 transition-all duration-300 rounded-lg outline-white/0 focus:outline-white/25 disabled:text-gray-500"
+                placeholder="abc@gmail.com"
+              />
+              {isLoading && (
+                <div className="absolute right-4 top-0 bottom-0 flex justify-center items-center">
+                  <div className="rounded-xl bg-white/80 w-2 h-2 animate-ping"></div>
+                </div>
+              )}
+            </div>
+            {email.success ? (
+              <div className="relative">
+                <input
+                  onChange={handleKey}
+                  disabled={isLoadingLink}
+                  className="pr-9 pl-4 bg-blue-500 py-3 max-w-md  w-sm outline-1 transition-all duration-300 rounded-lg outline-white/0 focus:outline-white/25 disabled:text-gray-500"
+                  placeholder="Paste Link Here."
+                />
+                {isLoadingLink && (
+                  <div className="absolute right-4 top-0 bottom-0 flex justify-center items-center">
+                    <div className="rounded-xl bg-white/80 w-2 h-2 animate-ping"></div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div
+                onClick={isLoading ? undefined : login}
+                className=" cursor-pointer text-sm max-w-md flex flex-row justify-center items-center gap-2 bg-gray-200 rounded-lg py-3 w-sm text-center hover:bg-gray-100"
+              >
+                <p>{isLoading ? "Sending Email..." : "Send Login Link"}</p>
+              </div>
+            )}
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      ) : (
+        <div className="flex justify-center items-center">
+          <div className="rounded-full bg-white/80 w-10 h-10 animate-ping"></div>
+          <div className="rounded-full bg-white/80 w-10 h-10 animate-ping"></div>
+        </div>
+      )}
+    </main>
   );
 }
