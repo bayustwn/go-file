@@ -11,6 +11,7 @@ import folderIcon from "../../public/folder.svg";
 import fileIcon from "../../public/file.svg";
 import uploadIcon from "../../public/upload.svg";
 import Upload from "../components/upload";
+import toast from "react-hot-toast";
 
 export default function Home() {
   var router: AppRouterInstance = useRouter();
@@ -23,15 +24,16 @@ export default function Home() {
     storage: 0,
   });
 
-  const [file, setFile] = useState<File>();
+  const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const inputClick = () => {
     inputRef.current?.click();
   };
 
   const onFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setFile(e.target.files?.[0]);
+    setFile(e.target.files?.[0]!!);
   };
 
   const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -77,11 +79,35 @@ export default function Home() {
       });
   }
 
-  const formData = new FormData();
-    formData.append("file", file as Blob);
-
   async function upload() {
-    
+    const formData = new FormData();
+    formData.append("file", file as Blob);
+    setIsUploading(true);
+    await axios
+      .post(
+        `https://${process.env.NEXT_PUBLIC_SERVER_LOCATION}.gofile.io/contents/uploadfile`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("session_id")}`,
+          },
+        }
+      )
+      .then(() => {
+        toast.success("File uploaded");
+        setUserInfo({
+          ...userInfo,
+          file: userInfo.file + 1,
+          folder: userInfo.folder + 1,
+        });
+        setFile(null);
+      })
+      .catch(() => {
+        toast.error("File not uploaded");
+      })
+      .finally(() => {
+        setIsUploading(false);
+      });
   }
 
   return (
@@ -99,7 +125,7 @@ export default function Home() {
           <Info image={fileIcon} content={userInfo.file ? userInfo.file : 0} />
         </div>
         <div
-          onDragOver={onDragOver}
+          onDragOver={isUploading ? () => {} : onDragOver}
           onDrop={onDrop}
           onDragLeave={onDragLeave}
           onClick={inputClick}
@@ -113,24 +139,33 @@ export default function Home() {
             <Upload
               image={fileIcon}
               fileName={
-                file.name.length > 30
-                  ? file.name.slice(0, 30) + "..."
+                file.name.length > 25
+                  ? file.name.slice(0, 25) + "..."
                   : file.name
               }
             />
           ) : (
-            <Upload image={uploadIcon} fileName="Click to Upload or Drop it here" />
+            <Upload
+              image={uploadIcon}
+              fileName="Click to Upload or Drop it here"
+            />
           )}
         </div>
         <input
           onChange={onFileChange}
           type="file"
-          ref={inputRef}
+          ref={isUploading ? null : inputRef}
           className="hidden"
         />
-        <div className="mt-4 cursor-pointer text-sm w-100 flex flex-row justify-center items-center gap-2 bg-gray-200 rounded-lg py-3 text-center hover:bg-gray-100">
-          <p>Upload</p>
-        </div>
+        {file ? (
+          <button
+            onClick={upload}
+            disabled={isUploading}
+            className="mt-4 cursor-pointer text-sm w-100 flex flex-row justify-center items-center gap-2 bg-gray-200 rounded-lg py-3 text-center hover:bg-gray-100"
+          >
+            <p>{isUploading ? "Uploading..." : "Upload"}</p>
+          </button>
+        ) : null}
       </div>
     </main>
   );

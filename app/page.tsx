@@ -115,12 +115,13 @@ export default function Home() {
                 )}
               </div>
             ) : (
-              <div
-                onClick={isLoading ? undefined : login}
+              <button
+                onClick={login}
+                disabled={isLoading}
                 className=" cursor-pointer text-sm max-w-md flex flex-row justify-center items-center gap-2 bg-gray-200 rounded-lg py-3 w-sm text-center hover:bg-gray-100"
               >
                 <p>{isLoading ? "Sending Email..." : "Send Login Link"}</p>
-              </div>
+              </button>
             )}
           </div>
         </div>
