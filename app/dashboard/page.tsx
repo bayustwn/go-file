@@ -21,8 +21,9 @@ export default function Home() {
     email: "",
     folder: 0,
     file: 0,
-    storage: 0,
+    rootFolder: "",
   });
+  const [folder, setFolder] = useState({});
 
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -66,16 +67,36 @@ export default function Home() {
         },
       })
       .then((res) => {
+        var rootFolder = res.data.data.rootFolder;
         setUserInfo({
           email: res.data.data.email,
           folder: res.data.data.statsCurrent.folderCount,
           file: res.data.data.statsCurrent.fileCount,
-          storage: res.data.data.statsCurrent.storage,
+          rootFolder: res.data.data.rootFolder,
         });
+        getAllFolder(rootFolder);
       })
       .catch(() => {
         router.replace("/");
         localStorage.clear();
+      });
+  }
+
+  async function getAllFolder(rootFolder: string) {
+    await axios
+      .get(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/contents/${rootFolder}?wt=4fd6sg89d7s6`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("session_id")}`,
+          },
+        }
+      )
+      .then((res) => {
+        setFolder(res.data.data.children);
+      })
+      .catch(() => {
+        toast.error("Error Retrieve Folder!");
       });
   }
 
@@ -110,13 +131,28 @@ export default function Home() {
       });
   }
 
+  const open = (folder : string) =>{
+    router.push(`/files?folder=${folder}`);
+  }
+
+  const logout = () => {
+    localStorage.clear();
+    router.replace("/");
+  };
+
   return (
-    <main className="h-screen flex justify-center items-center">
+    <main className="h-screen flex-col sm:flex-row overflow-auto flex justify-center items-center gap-5">
       <div className="max-w-md px-6 py-6 bg-blue-200 outline outline-white/25 items-center flex flex-col rounded-lg shadow-lg">
         <Image src={user} width={55} className="mb-3" alt="user_icon" />
-        <p className="font-medium">
+        <p className="font-medium mb-2">
           {userInfo.email ? userInfo.email : "User Email"}
         </p>
+        <div
+          onClick={logout}
+          className="bg-red-500 px-8 py-1 cursor-pointer rounded-md hover:bg-red-400"
+        >
+          <p>Logout</p>
+        </div>
         <div className="flex mt-4 justify-between gap-6 items-center">
           <Info
             image={folderIcon}
@@ -166,6 +202,21 @@ export default function Home() {
             <p>{isUploading ? "Uploading..." : "Upload"}</p>
           </button>
         ) : null}
+      </div>
+      <div className="bg-blue-200 h-110  w-110 font-medium px-6 py-6 outline outline-white/25 items-center flex flex-col rounded-lg shadow-lg">
+        <p className="mb-4 ">Your Folder</p>
+        <div className=" flex flex-col gap-5 overflow-y-auto w-full">
+          {Object.values(folder).map((folder: any, index: number) => (
+            <div
+            onClick={()=>open(folder.name)}
+              key={index}
+              className="cursor-pointer hover:bg-gray-100 px-3 py-3 rounded-md w-full flex items-center gap-2"
+            >
+              <Image src={folderIcon} width={30} alt="fileIcon" />
+              <p className="text-sm">{folder.name}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </main>
   );
