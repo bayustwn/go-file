@@ -5,6 +5,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import { encryptText,decryptText } from "./components/encrypt";
 
 export default function Home() {
   const router: AppRouterInstance = useRouter();
@@ -20,7 +21,7 @@ export default function Home() {
 
   useEffect(() => {
     const session = localStorage.getItem("session_id");
-
+    
     if (session) {
       router.replace("/dashboard");
     } else {
@@ -50,8 +51,8 @@ export default function Home() {
         },
       })
       .then((res) => {
-        localStorage.setItem("session_id", keys);
-        localStorage.setItem("account_id", res.data.data.id);
+        localStorage.setItem("session_id", encryptText(keys));
+        localStorage.setItem("account_id",encryptText( res.data.data.id));
         router.replace("/dashboard");
         setIsLoadingLink(false);
       })
@@ -118,7 +119,7 @@ export default function Home() {
               <button
                 onClick={login}
                 disabled={isLoading}
-                className=" cursor-pointer text-sm max-w-md flex flex-row justify-center items-center gap-2 bg-gray-200 rounded-lg py-3 w-sm text-center hover:bg-gray-100"
+                className=" cursor-pointer text-sm max-w-md bg-gray-200 rounded-lg py-3 w-sm text-center hover:bg-gray-100"
               >
                 <p>{isLoading ? "Sending Email..." : "Send Login Link"}</p>
               </button>
